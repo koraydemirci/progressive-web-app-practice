@@ -4,6 +4,9 @@ var closeCreatePostModalButton = document.querySelector(
   "#close-create-post-modal-btn"
 );
 var sharedMomentsArea = document.querySelector("#shared-moments");
+var form = document.querySelector("form");
+var titleInput = document.querySelector("#title");
+var locationInput = document.querySelector("#location");
 
 function openCreatePostModal() {
   // createPostArea.style.display = "block";
@@ -121,3 +124,55 @@ if ("indexedDB" in window) {
     }
   });
 }
+
+const sendData = () => {
+  fetch("https://udemy-pwa-6dd23.firebaseio.com/posts.json", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      id: new Date().toISOString(),
+      title: titleInput.value,
+      location: locationInput.value,
+      image:
+        "https://firebasestorage.googleapis.com/v0/b/udemy-pwa-6dd23.appspot.com/o/sf-1.jpeg?alt=media&token=0a2dafb2-8065-419e-aab4-bbb8cc0e679b",
+    }),
+  }).then(() => {
+    console.log("Sent data", res);
+  });
+};
+
+form.addEventListener("submit", () => {
+  event.defaultPrevented();
+  if (!titleInput.value.trim() || !locationInput.value.trim()) {
+    alert("Please enter valid data!");
+    return;
+  }
+  closeCreatePostModal();
+
+  if ("serviceWorker" in navigator && "SyncManager" in window) {
+    navigator.serviceWorker.ready.then((sw) => {
+      const post = {
+        id: new Date().toISOString(),
+        title: titleInput.value,
+        location: locationInput.value,
+      };
+      writeData("sync-posts", post)
+        .then(() => {
+          return sw.sync.register("sync-new-post");
+        })
+        .then(() => {
+          const snackbarContainer = document.querySelector(
+            "#confirmation-toast"
+          );
+          const data = { message: "Your post was saved form syncing..." };
+          snackbarContainer.MaterialSnackbar.showSnackbr(data);
+        })
+        .catch((error) => console.log(error));
+    });
+  } else {
+    sendData();
+  }
+});
